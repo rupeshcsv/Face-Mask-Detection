@@ -1,12 +1,13 @@
 
 import cv2
-from keras.preprocessing.image import ImageDataGenerator
-from keras.applications.vgg19 import VGG19
-from keras import Sequential
+import numpy as np
+# from keras.preprocessing.image import ImageDataGenerator
+# from keras.applications.vgg19 import VGG19
+# from keras import Sequential
 from keras.models import load_model
-from keras.layers import Dense, Flatten
-import warnings
-warnings.filterwarnings("ignore")
+# from keras.layers import Dense, Flatten
+# import warnings
+# warnings.filterwarnings("ignore")
 
 dataset_path = 'Face Mask Dataset/'
 train_path = dataset_path + 'Train'
@@ -16,14 +17,14 @@ validation_path = dataset_path + 'Validation'
 img_size = (128, 128)
 batch_size = 32
 
+# To train the model again, uncomment and run the lines below
+'''
 datagen = ImageDataGenerator(rescale=1./255)
 
 train_generator = datagen.flow_from_directory(train_path, target_size=img_size, batch_size=batch_size, class_mode='binary', color_mode='rgb')
 test_generator = datagen.flow_from_directory(test_path, target_size=img_size, batch_size=batch_size, class_mode='binary', color_mode='rgb')
 validation_generator = datagen.flow_from_directory(validation_path, target_size=img_size, batch_size=batch_size, class_mode='binary', color_mode='rgb')
 
-# Model can be trained using the lines below
-'''
 vgg19 = VGG19(weights='imagenet', include_top=False, input_shape=(img_size[0], img_size[1], 3))
 for layer in vgg19.layers:
 	layer.trainable = False
@@ -44,28 +45,38 @@ model.save('maskModel.h5')
 model = load_model('maskModel.h5')
 
 # # Using haarcascade for face detection
-# face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-#
-# # 0: Webcam | Change 0 to appropriate webcam index
-# cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-#
-# while True:
-# 	ret, img = cap.read()
-# 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#
-# 	# Detecting faces in the frame
-# 	faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-#
-# 	# Drawing rectangle on frame around faces
-# 	for x, y, w, h in faces:
-# 		cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
-#
-# 	cv2.imshow('Image', img)
-# 	k = cv2.waitKey(30)
-#
-# 	# Break of Esc is pressed
-# 	if k == 27:
-# 		break
-#
-# cap.release()
-# cv2.destroyAllWindows()
+face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+
+# 0: Webcam | Change 0 to appropriate webcam index
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+while True:
+	ret, img = cap.read()
+	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+	# Detecting faces in the frame
+	faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+
+	mask_label = {0:'MASK',1:'NO MASK'}
+
+	for x, y, w, h in faces:
+
+		# Drawing rectangle on frame around faces
+		cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
+
+		#
+		crop = img[y:y+h, x:x+w]
+		crop = cv2.resize(crop, img_size)
+		crop = np.reshape(crop, [1, img_size[0], img_size[1], 3])/255.0
+		mask_result = model.predict(crop)
+		cv2.putText(img, mask_label[mask_result.argmax()], (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0))
+
+	cv2.imshow('Image', img)
+	k = cv2.waitKey(30)
+
+	# Break of Esc is pressed
+	if k == 27:
+		break
+
+cap.release()
+cv2.destroyAllWindows()
