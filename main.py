@@ -57,19 +57,28 @@ while True:
 	# Detecting faces in the frame
 	faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
-	mask_label = {0:'MASK',1:'NO MASK'}
+	mask_label = {0: 'MASK', 1: 'NO MASK'}
 
 	for x, y, w, h in faces:
 
 		# Drawing rectangle on frame around faces
-		cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
+
 
 		#
-		crop = img[y:y+h, x:x+w]
-		crop = cv2.resize(crop, img_size)
-		crop = np.reshape(crop, [1, img_size[0], img_size[1], 3])/255.0
-		mask_result = model.predict(crop)
-		cv2.putText(img, mask_label[mask_result.argmax()], (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0))
+		cropped_img = img[y:y+h, x:x+w]
+		resized_img = cv2.resize(cropped_img, img_size)
+		normalized_img = resized_img/255.0
+		reshaped_img = np.reshape(normalized_img, (1, img_size[0], img_size[1], 3))
+		reshaped_img = np.vstack([reshaped_img])
+		mask_result = round(model.predict(reshaped_img)[0][0])
+
+		if mask_result:
+			display_color = (0, 0, 255)
+		else:
+			display_color = (0, 255, 0)
+
+		cv2.rectangle(img, (x, y), (x + w, y + h), display_color, 2)
+		cv2.putText(img, mask_label[mask_result], (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 1, display_color, 2)
 
 	cv2.imshow('Image', img)
 	k = cv2.waitKey(30)
