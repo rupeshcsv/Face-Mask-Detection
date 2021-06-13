@@ -6,6 +6,7 @@ from keras.applications.vgg19 import VGG19
 from keras import Sequential
 from keras.models import load_model
 from keras.layers import Dense, Flatten
+from tensorflow import lite
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -41,6 +42,11 @@ model = Sequential([
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics='accuracy')
 history = model.fit_generator(generator=train_generator, steps_per_epoch=len(train_generator)//batch_size, epochs=20, validation_data=validation_generator, validation_steps=len(validation_generator)//batch_size)
 model.save('models/maskModel.h5')
+
+# TFLite Model
+converter = lite.TFLiteConverter.from_keras_model(model)
+tfmodel = converter.convert()
+open('models/model.tflite', 'wb').write(tfmodel)
 '''
 
 # Loading the trained model
